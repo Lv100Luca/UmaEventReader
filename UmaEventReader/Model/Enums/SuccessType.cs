@@ -3,7 +3,7 @@ namespace UmaEventReader.Model.Enums;
 public enum SuccessType
 {
     Success,
-    Failure,
+    Fail,
     Random,
     None
 }
