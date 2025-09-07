@@ -14,6 +14,7 @@ public static class Mapper
         var umaEvent = new UmaEvent
         {
             // clean up event name (remove characters)
+            // prob best to just get rid of all (.,/!?) entirely
             EventName = choices.First().EventName,
             CharacterName = choices.First().CharacterName,
             Choices = choices.Select(ToUmaEventChoice).ToList()

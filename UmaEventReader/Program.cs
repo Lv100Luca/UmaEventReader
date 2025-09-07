@@ -1,5 +1,7 @@
 ﻿// See https://aka.ms/new-console-template for more information
-
+// todo: only print text when results are found
+// maybe prefilter garbage that isnt text
+// supress results with more than 10
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Microsoft.EntityFrameworkCore;
