@@ -2,7 +2,7 @@
 
 using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
-using UmaEventReader;
+using UmaEventReader.Extensions;
 using UmaEventReader.Model;
 
 // await DbInitializer.Initialize(true);

@@ -2,7 +2,7 @@ using System.Text.Json;
 using UmaEventReader.Model;
 using UmaEventReader.Model.dto;
 
-namespace UmaEventReader;
+namespace UmaEventReader.Services;
 
 public class DbInitializer
 {

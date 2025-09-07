@@ -2,6 +2,8 @@ using UmaEventReader.Model;
 using UmaEventReader.Model.dto;
 using UmaEventReader.Model.Enums;
 
+namespace UmaEventReader.Services;
+
 public static class Mapper
 {
     public static UmaEvent ToUmaEvent(List<EventChoice> choices)
