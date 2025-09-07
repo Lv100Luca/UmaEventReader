@@ -4,6 +4,7 @@ using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using UmaEventReader.Extensions;
 using UmaEventReader.Model;
+using UmaEventReader.Services;
 
 // await DbInitializer.Initialize(true);
 
@@ -17,10 +18,13 @@ var sw = new Stopwatch();
 sw.Start();
 
 var events = db.Events
-    .Where(e => EF.Functions.ILike(e.EventName, $"%{eventName}%"))
+    .AsNoTracking() // loads the db entries as 'read only' -> changes wont be reflected in the db
+    .WhereEventNameContains(eventName)
     .Include(e => e.Choices)
     .ThenInclude(c => c.Outcomes)
     .ToList();
+
+Console.Out.WriteLine("Found " + events.Count + " events.");
 
 var searchTime = sw.ElapsedMilliseconds;
 
