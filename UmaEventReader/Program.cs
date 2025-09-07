@@ -44,10 +44,9 @@ void SearchSreenshot()
 
     Application.EnableVisualStyles();
     Application.SetCompatibleTextRenderingDefault(false);
-    var form = new SelectionForm();
-    //{X=449,Y=343,Width=357,Height=54}
     Rectangle region = new(450, 350, 330, 40);
 
+    // var form = new SelectionForm();
     // if (form.ShowDialog() == DialogResult.OK)
     // {
         // region = form.SelectedRegion;
