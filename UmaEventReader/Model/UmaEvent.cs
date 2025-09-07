@@ -15,6 +15,7 @@ public class UmaEvent
         var sb = new StringBuilder();
 
         sb.AppendLine($"{EventName} ({CharacterName})");
+        sb.AppendLine();
 
         foreach (var choice in Choices)
         {
@@ -25,6 +26,8 @@ public class UmaEvent
                 // Use ToString() on each outcome or customize
                 sb.AppendLine("    - Outcomes: " + string.Join(", ", choice.Outcomes));
             }
+
+            sb.AppendLine();
         }
 
         return sb.ToString();
