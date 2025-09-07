@@ -36,11 +36,61 @@ public static class Mapper
         };
     }
 
-    private static List<Outcome> ParseOutcomes(string allOutcomes)
-    {
-        return allOutcomes
-            .Split(';', StringSplitOptions.RemoveEmptyEntries)
-            .Select(part => new Outcome { Value = part.Trim(), Type = OutcomeType.Unknown })
+    private static List<Outcome> ParseOutcomes(string allOutcomes) =>
+        allOutcomes
+            .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(GetOutcome)
             .ToList();
+
+    private static Outcome GetOutcome(string outcome)
+    {
+        // Condition check
+        if (IsCondition(outcome))
+            return new Outcome { Value = outcome, Type = OutcomeType.Condition };
+
+        // Simple stat outcomes like "10 Speed", "30 Energy"
+        var parts = outcome.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+        if (Enum.TryParse(parts[1].Replace(" ",""), out OutcomeType type))
+            return new Outcome { Value = parts[0], Type = type };
+
+        // Skill hints
+        if (outcome.Contains("Skill Hint", StringComparison.OrdinalIgnoreCase))
+            return new Outcome { Value = outcome, Type = OutcomeType.SkillHint };
+
+        // Fallback
+        return new Outcome { Value = outcome, Type = OutcomeType.Unknown };
     }
+
+    private static bool IsCondition(string outcome)
+    {
+        outcome = outcome.Replace("(Random)", "").Trim();
+
+        return KnownConditions.Contains(outcome);
+    }
+
+    private static bool IsStatIncrease(string outcome)
+    {
+        var parts = outcome.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+
+        return Enum.TryParse(parts[1], out OutcomeType type);
+    }
+
+    private readonly static HashSet<string> KnownConditions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        // good conditions
+        "Practice Perfect ◯",
+        "Practice Perfect◎",
+        "Shining Brightly",
+        "Charming ◯",
+        "Fast Learner",
+        "Hot Topic",
+        // bad conditions
+        "Practice Poor",
+        "Under The Weather",
+        "Migraine",
+        "Night Owl",
+        "Slow Metabolism",
+        "Slacker",
+        // extend with other conditions...
+    };
 }

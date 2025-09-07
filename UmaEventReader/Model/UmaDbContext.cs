@@ -16,7 +16,10 @@ public class UmaContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<Outcome>();
+        modelBuilder
+            .Entity<Outcome>()
+            .Property(o => o.Type)
+            .HasConversion<string>(); // store enum as string instead of int
 
         base.OnModelCreating(modelBuilder);
     }

@@ -2,10 +2,18 @@ namespace UmaEventReader.Model.Enums;
 
 public enum OutcomeType
 {
-    Stat,
-    Skill,
+    Unknown,
+    Speed,
+    Stamina,
+    Power,
+    Guts,
+    Wit,
     Mood,
+    AllStats,
     Friendship,
+    SkillPts,
+    SkillHint,
     Energy,
-    Unknown
+    MaxEnergy,
+    Condition,
 }

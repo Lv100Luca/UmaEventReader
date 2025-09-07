@@ -1,10 +1,8 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
-using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using UmaEventReader;
 using UmaEventReader.Model;
-using UmaEventReader.Model.dto;
 
 // await DbInitializer.Initialize(true);
 
