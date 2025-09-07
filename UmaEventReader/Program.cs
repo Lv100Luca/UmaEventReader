@@ -8,6 +8,7 @@ using UmaEventReader;
 using UmaEventReader.Extensions;
 using UmaEventReader.Model;
 using UmaEventReader.Services;
+
 await using var db = new UmaContext();
 await DbInitializer.Initialize(true);
 
@@ -44,24 +45,22 @@ void SearchSreenshot()
     Application.EnableVisualStyles();
     Application.SetCompatibleTextRenderingDefault(false);
     var form = new SelectionForm();
+    //{X=449,Y=343,Width=357,Height=54}
+    Rectangle region = new(450, 350, 330, 40);
 
-    Rectangle region = new(450, 350, 350, 45);
-
-    if (form.ShowDialog() == DialogResult.OK)
-    {
-        region = form.SelectedRegion;
-        Console.WriteLine($"Selected area: {region}");
-    }
+    // if (form.ShowDialog() == DialogResult.OK)
+    // {
+        // region = form.SelectedRegion;
+        // Console.WriteLine($"Selected area: {region}");
+    // }
 
     var checkInterval = TimeSpan.FromSeconds(1);
     var previousText = string.Empty;
 
     while (true)
     {
-        using var bmp = CaptureScreenRegion(region);
-
+        using var bmp = AddBorder(CaptureScreenRegion(region), 0, Color.White);
         var text = GetTextFromBitmap(bmp);
-
 
         if (text != previousText && !string.IsNullOrWhiteSpace(text))
         {
@@ -72,10 +71,10 @@ void SearchSreenshot()
 
             if (results == 0)
             {
-                var retryBmp = CaptureScreenRegion(GetTranslatedRectangle(region));
+                var retryBmp = CaptureScreenRegion(region with { X = region.X - 40, Width = region.Width - 40 });
                 text = GetTextFromBitmap(retryBmp);
 
-                results = RunSearch(text);
+                _ = RunSearch(text);
             }
 
             Console.WriteLine($"Read Text: '{text}'");
@@ -136,31 +135,51 @@ static string GetTextFromBitmap(Bitmap bmp)
 {
     var tessdataPath = Path.Combine(Directory.GetCurrentDirectory(), "tessdata");
 
-    string text = "";
-
-    using var ms = new MemoryStream();
-    bmp.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
-    ms.Position = 0;
-
-    using var img = Pix.LoadFromMemory(ms.ToArray());
+    var img = PixConverter.ToPix(bmp);
 
     using var engine = new TesseractEngine(tessdataPath, "eng", EngineMode.Default);
 
+    engine.SetVariable("tessedit_char_whitelist", "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,!?' ");
+    engine.SetVariable("debug_file", "NUL");
+
+    engine.DefaultPageSegMode = PageSegMode.SingleBlock;
+
     using var page = engine.Process(img);
 
-    text = page.GetText();
+    var text = page.GetText();
 
     return text.Trim();
 }
 
 Rectangle GetTranslatedRectangle(Rectangle region)
 {
-    const int pixelsToRemove = 40;
-    region.X += pixelsToRemove;
-    region.Width -= pixelsToRemove;
+    var newRect = new Rectangle(region.X, region.Y, region.Width, region.Height);
 
-    return region;
+    const int pixelsToRemove = 40;
+    newRect.X += pixelsToRemove;
+    newRect.Width -= pixelsToRemove;
+
+    return newRect;
 }
 
 [DllImport("user32.dll")]
 extern static bool SetProcessDPIAware();
+
+Bitmap AddBorder(Bitmap src, int borderSize, Color borderColor)
+{
+    int newWidth = src.Width + borderSize * 2;
+    int newHeight = src.Height + borderSize * 2;
+
+    Bitmap bordered = new Bitmap(newWidth, newHeight);
+
+    using (Graphics g = Graphics.FromImage(bordered))
+    {
+        // Fill background with border color
+        g.Clear(borderColor);
+
+        // Draw original image inside the border
+        g.DrawImage(src, new Rectangle(borderSize, borderSize, src.Width, src.Height));
+    }
+
+    return bordered;
+}
