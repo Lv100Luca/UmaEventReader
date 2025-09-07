@@ -13,6 +13,7 @@ public static class Mapper
 
         var umaEvent = new UmaEvent
         {
+            // clean up event name (remove characters)
             EventName = choices.First().EventName,
             CharacterName = choices.First().CharacterName,
             Choices = choices.Select(ToUmaEventChoice).ToList()
