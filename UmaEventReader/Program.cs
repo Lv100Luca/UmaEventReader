@@ -46,13 +46,14 @@ void SearchSreenshot()
 
     Application.EnableVisualStyles();
     Application.SetCompatibleTextRenderingDefault(false);
-    Rectangle region = new(450, 350, 330, 40);
+    Rectangle region = new(454, 348, 345, 42);
 
     // var form = new SelectionForm();
+    //
     // if (form.ShowDialog() == DialogResult.OK)
     // {
-        // region = form.SelectedRegion;
-        // Console.WriteLine($"Selected area: {region}");
+    //     region = form.SelectedRegion;
+    //     Console.WriteLine($"Selected area: {region}");
     // }
 
     var checkInterval = TimeSpan.FromSeconds(1);
@@ -63,9 +64,10 @@ void SearchSreenshot()
         using var bmp = AddBorder(CaptureScreenRegion(region), 0, Color.White);
         var text = GetTextFromBitmap(bmp);
 
-        if (text != previousText && !string.IsNullOrWhiteSpace(text))
+        if (text != previousText && !string.IsNullOrWhiteSpace(text) && text.Length > 3)
         {
-            Console.WriteLine($"Read Text: '{text}'");
+            Console.WriteLine($"Read Text 1st: '{text}'");
+
             previousText = text;
 
             var results = RunSearch(text);
@@ -73,9 +75,16 @@ void SearchSreenshot()
             if (results == 0)
             {
                 var retryBmp = CaptureScreenRegion(region with { X = region.X - 40, Width = region.Width - 40 });
-                text = GetTextFromBitmap(retryBmp);
+                var newText = GetTextFromBitmap(retryBmp);
 
-                _ = RunSearch(text);
+                // todo: make loop or smth
+                if (newText != previousText && !string.IsNullOrWhiteSpace(newText) && text.Length > 3)
+                {
+                    text = newText;
+                    Console.WriteLine($"Read Text 2nd: '{text}'");
+
+                    results = RunSearch(text);
+                }
             }
 
             Console.WriteLine($"Read Text: '{text}'");
@@ -107,7 +116,8 @@ int RunSearch(string eventName)
 
     var searchTime = sw.ElapsedMilliseconds;
 
-    foreach (var umaEvent in events)
+    // only take 5 events should there be more
+    foreach (var umaEvent in events.Take(5))
     {
         Console.Out.WriteLine(umaEvent);
 
@@ -140,14 +150,26 @@ static string GetTextFromBitmap(Bitmap bmp)
 
     using var engine = new TesseractEngine(tessdataPath, "eng", EngineMode.Default);
 
-    engine.SetVariable("tessedit_char_whitelist", "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,!?' ");
+    engine.SetVariable("tessedit_char_whitelist", "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,!?'() ");
     engine.SetVariable("debug_file", "NUL");
 
     engine.DefaultPageSegMode = PageSegMode.SingleBlock;
 
     using var page = engine.Process(img);
 
+    var meanConfidence = page.GetMeanConfidence(); // 0.0 to 1.0
     var text = page.GetText();
+
+    var confidenceThreshold = 0.6;
+
+    if (meanConfidence < confidenceThreshold )
+        return string.Empty;
+
+    // some filtering steps
+
+    // sometimes a starting ! is read (wrong) -> replace it
+    if (text.StartsWith('!') || text.StartsWith('.'))
+        text = text[1..];
 
     return text.Trim();
 }
