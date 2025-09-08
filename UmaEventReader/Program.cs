@@ -2,6 +2,9 @@
 // todo: only print text when results are found
 // maybe prefilter garbage that isnt text
 // supress results with more than 10
+// use draw to pront debug things
+// use draw to print outcomes to options
+
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Microsoft.EntityFrameworkCore;
@@ -10,9 +13,10 @@ using UmaEventReader;
 using UmaEventReader.Extensions;
 using UmaEventReader.Model;
 using UmaEventReader.Services;
+using ImageFormat = System.Drawing.Imaging.ImageFormat;
 
 await using var db = new UmaContext();
-await DbInitializer.Initialize(true);
+// await DbInitializer.Initialize(true);
 
 // TextSearch();
 SearchSreenshot();
@@ -46,23 +50,44 @@ void SearchSreenshot()
 
     Application.EnableVisualStyles();
     Application.SetCompatibleTextRenderingDefault(false);
-    Rectangle region = new(454, 348, 345, 42);
+    Rectangle region = new(400, 349, 350, 48);
 
-    // var form = new SelectionForm();
-    //
+    var form = new SelectionForm();
+
     // if (form.ShowDialog() == DialogResult.OK)
+    // region = form.SelectedRegion;
+
+    var offset = 50;
+
+    var altRegion = region with
+    {
+        X = (region.X + offset), Y = region.Y, Width = (region.Width - offset), Height = region.Height
+    };
+
+    Console.WriteLine($"Selected area: {region}");
+    Console.WriteLine($"Selected area alt : {altRegion}");
+
+    // var t = new Thread(() =>
     // {
-    //     region = form.SelectedRegion;
-    //     Console.WriteLine($"Selected area: {region}");
-    // }
+    //     Application.EnableVisualStyles();
+    //     Application.Run(new OverlayForm([region, altRegion]));
+    // });
+    //
+    // t.SetApartmentState(ApartmentState.STA);
+    // t.Start();
 
     var checkInterval = TimeSpan.FromSeconds(1);
     var previousText = string.Empty;
 
     while (true)
     {
-        using var bmp = AddBorder(CaptureScreenRegion(region), 0, Color.White);
+        // rework this
+        // Console.Out.WriteLine("Searching");
+        using var bmp = CaptureScreenRegion(region);
         var text = GetTextFromBitmap(bmp);
+        Console.Out.WriteLine($"'{text}'");
+
+        bmp.Save("firstTry.png", ImageFormat.Png);
 
         if (text != previousText && !string.IsNullOrWhiteSpace(text) && text.Length > 3)
         {
@@ -74,8 +99,10 @@ void SearchSreenshot()
 
             if (results == 0)
             {
-                var retryBmp = CaptureScreenRegion(region with { X = region.X - 40, Width = region.Width - 40 });
+                var retryBmp = CaptureScreenRegion(altRegion);
                 var newText = GetTextFromBitmap(retryBmp);
+
+                retryBmp.Save("secondTry.png", ImageFormat.Png);
 
                 // todo: make loop or smth
                 if (newText != previousText && !string.IsNullOrWhiteSpace(newText) && text.Length > 3)
@@ -150,10 +177,10 @@ static string GetTextFromBitmap(Bitmap bmp)
 
     using var engine = new TesseractEngine(tessdataPath, "eng", EngineMode.Default);
 
-    engine.SetVariable("tessedit_char_whitelist", "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,!?'() ");
+    engine.SetVariable("tessedit_char_whitelist", "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,!?'()# ");
     engine.SetVariable("debug_file", "NUL");
 
-    engine.DefaultPageSegMode = PageSegMode.SingleBlock;
+    engine.DefaultPageSegMode = PageSegMode.SingleLine;
 
     using var page = engine.Process(img);
 
@@ -162,8 +189,12 @@ static string GetTextFromBitmap(Bitmap bmp)
 
     var confidenceThreshold = 0.6;
 
-    if (meanConfidence < confidenceThreshold )
+    if (meanConfidence < confidenceThreshold)
+    {
+        Console.Out.WriteLine($"Not confident in '{text}' ({meanConfidence})");
+
         return string.Empty;
+    }
 
     // some filtering steps
 
@@ -171,18 +202,10 @@ static string GetTextFromBitmap(Bitmap bmp)
     if (text.StartsWith('!') || text.StartsWith('.'))
         text = text[1..];
 
+    //replace trailing new line
+    text = text.Replace("\n", "");
+
     return text.Trim();
-}
-
-Rectangle GetTranslatedRectangle(Rectangle region)
-{
-    var newRect = new Rectangle(region.X, region.Y, region.Width, region.Height);
-
-    const int pixelsToRemove = 40;
-    newRect.X += pixelsToRemove;
-    newRect.Width -= pixelsToRemove;
-
-    return newRect;
 }
 
 [DllImport("user32.dll")]
