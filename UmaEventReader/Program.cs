@@ -7,6 +7,7 @@
 
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Windows.Forms.VisualStyles;
 using Microsoft.EntityFrameworkCore;
 using Tesseract;
 using UmaEventReader;
@@ -84,8 +85,11 @@ void SearchSreenshot()
         // rework this
         // Console.Out.WriteLine("Searching");
         using var bmp = AddBorder(CaptureScreenRegion(region), 5, Color.Black);
+        var test = ExtractWhiteText(bmp);
 
-        var text = GetTextFromBitmap(bmp);
+        test.Save("processed.png", ImageFormat.Png);
+
+        var text = GetTextFromBitmap(test);
         // Console.Out.WriteLine($"'{text}'");
 
         bmp.Save("firstTry.png", ImageFormat.Png);
@@ -101,7 +105,8 @@ void SearchSreenshot()
             if (results == 0)
             {
                 var retryBmp = AddBorder(CaptureScreenRegion(altRegion), 5, Color.Black);
-                var newText = GetTextFromBitmap(retryBmp);
+                var newTest = ExtractWhiteText(retryBmp);
+                var newText = GetTextFromBitmap(newTest);
 
                 retryBmp.Save("secondTry.png", ImageFormat.Png);
 
@@ -179,7 +184,7 @@ static string GetTextFromBitmap(Bitmap bmp)
 
     using var engine = new TesseractEngine(tessdataPath, "eng", EngineMode.Default);
 
-    engine.SetVariable("tessedit_char_whitelist", "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,!?'()# ");
+    engine.SetVariable("tessedit_char_whitelist", "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,!?'()#☆ ");
     engine.SetVariable("debug_file", "NUL");
 
     engine.DefaultPageSegMode = PageSegMode.SingleLine;
@@ -193,7 +198,7 @@ static string GetTextFromBitmap(Bitmap bmp)
 
     if (meanConfidence < confidenceThreshold)
     {
-        // Console.Out.WriteLine($"Not confident in '{text}' ({meanConfidence})");
+        Console.Out.WriteLine($"Not confident in '{text}' ({meanConfidence})");
 
         return string.Empty;
     }
@@ -230,4 +235,33 @@ static Bitmap AddBorder(Bitmap src, int borderSize, Color borderColor)
     }
 
     return bordered;
+}
+
+static Bitmap ExtractWhiteText(Bitmap input, byte brightnessThreshold = 200)
+{
+    Bitmap output = new Bitmap(input.Width, input.Height);
+
+    for (int y = 0; y < input.Height; y++)
+    {
+        for (int x = 0; x < input.Width; x++)
+        {
+            Color pixel = input.GetPixel(x, y);
+
+            // Calculate brightness (0–255)
+            byte brightness = (byte)((pixel.R + pixel.G + pixel.B) / 3);
+
+            if (brightness >= brightnessThreshold)
+            {
+                // This was white text → after invert, make it black
+                output.SetPixel(x, y, Color.Black);
+            }
+            else
+            {
+                // Background/shadow → after invert, make it white
+                output.SetPixel(x, y, Color.White);
+            }
+        }
+    }
+
+    return output;
 }
