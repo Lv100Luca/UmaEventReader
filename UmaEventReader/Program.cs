@@ -50,14 +50,14 @@ void SearchSreenshot()
 
     Application.EnableVisualStyles();
     Application.SetCompatibleTextRenderingDefault(false);
-    Rectangle region = new(400, 349, 350, 48);
+    Rectangle region = new(322, 269, 411, 49);
 
     var form = new SelectionForm();
 
     // if (form.ShowDialog() == DialogResult.OK)
     // region = form.SelectedRegion;
 
-    var offset = 50;
+    var offset = 60;
 
     var altRegion = region with
     {
@@ -69,23 +69,24 @@ void SearchSreenshot()
 
     // var t = new Thread(() =>
     // {
-    //     Application.EnableVisualStyles();
-    //     Application.Run(new OverlayForm([region, altRegion]));
+    // Application.EnableVisualStyles();
+    // Application.Run(new OverlayForm([region, altRegion]));
     // });
-    //
+
     // t.SetApartmentState(ApartmentState.STA);
     // t.Start();
 
-    var checkInterval = TimeSpan.FromSeconds(1);
+    var checkInterval = TimeSpan.FromSeconds(.5);
     var previousText = string.Empty;
 
     while (true)
     {
         // rework this
         // Console.Out.WriteLine("Searching");
-        using var bmp = CaptureScreenRegion(region);
+        using var bmp = AddBorder(CaptureScreenRegion(region), 5, Color.Black);
+
         var text = GetTextFromBitmap(bmp);
-        Console.Out.WriteLine($"'{text}'");
+        // Console.Out.WriteLine($"'{text}'");
 
         bmp.Save("firstTry.png", ImageFormat.Png);
 
@@ -99,7 +100,7 @@ void SearchSreenshot()
 
             if (results == 0)
             {
-                var retryBmp = CaptureScreenRegion(altRegion);
+                var retryBmp = AddBorder(CaptureScreenRegion(altRegion), 5, Color.Black);
                 var newText = GetTextFromBitmap(retryBmp);
 
                 retryBmp.Save("secondTry.png", ImageFormat.Png);
@@ -171,6 +172,7 @@ static Bitmap CaptureScreenRegion(Rectangle rect)
 
 static string GetTextFromBitmap(Bitmap bmp)
 {
+
     var tessdataPath = Path.Combine(Directory.GetCurrentDirectory(), "tessdata");
 
     var img = PixConverter.ToPix(bmp);
@@ -191,7 +193,7 @@ static string GetTextFromBitmap(Bitmap bmp)
 
     if (meanConfidence < confidenceThreshold)
     {
-        Console.Out.WriteLine($"Not confident in '{text}' ({meanConfidence})");
+        // Console.Out.WriteLine($"Not confident in '{text}' ({meanConfidence})");
 
         return string.Empty;
     }
@@ -211,7 +213,7 @@ static string GetTextFromBitmap(Bitmap bmp)
 [DllImport("user32.dll")]
 extern static bool SetProcessDPIAware();
 
-Bitmap AddBorder(Bitmap src, int borderSize, Color borderColor)
+static Bitmap AddBorder(Bitmap src, int borderSize, Color borderColor)
 {
     int newWidth = src.Width + borderSize * 2;
     int newHeight = src.Height + borderSize * 2;
