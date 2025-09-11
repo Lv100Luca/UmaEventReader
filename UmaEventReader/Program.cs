@@ -4,9 +4,12 @@
 // supress results with more than 10
 // use draw to pront debug things
 // use draw to print outcomes to options
+// todo: when event was successfully found -> save image under events as {eventname}.png
+// will be used for testing later perhaps
 
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 using System.Windows.Forms.VisualStyles;
 using Microsoft.EntityFrameworkCore;
 using Tesseract;
@@ -20,7 +23,10 @@ await using var db = new UmaContext();
 // await DbInitializer.Initialize(true);
 
 // TextSearch();
-SearchSreenshot();
+
+// var root = Path.Combine(AppContext.BaseDirectory, "captures");
+
+await SearchSreenshot();
 
 return;
 
@@ -44,7 +50,7 @@ void TextSearch()
     }
 }
 
-void SearchSreenshot()
+async Task SearchSreenshot()
 {
     if (Environment.OSVersion.Version.Major >= 6)
         SetProcessDPIAware();
@@ -89,7 +95,7 @@ void SearchSreenshot()
 
         test.Save("processed.png", ImageFormat.Png);
 
-        var text = GetTextFromBitmap(test);
+        var text = await GetTextFromBitmapAsync(test);
         // Console.Out.WriteLine($"'{text}'");
 
         bmp.Save("firstTry.png", ImageFormat.Png);
@@ -100,13 +106,13 @@ void SearchSreenshot()
 
             previousText = text;
 
-            var results = RunSearch(text);
+            var results = RunSearch(text, bmp);
 
             if (results == 0)
             {
                 var retryBmp = AddBorder(CaptureScreenRegion(altRegion), 5, Color.Black);
                 var newTest = ExtractWhiteText(retryBmp);
-                var newText = GetTextFromBitmap(newTest);
+                var newText = await GetTextFromBitmapAsync(newTest);
 
                 retryBmp.Save("secondTry.png", ImageFormat.Png);
 
@@ -116,7 +122,7 @@ void SearchSreenshot()
                     text = newText;
                     Console.WriteLine($"Read Text 2nd: '{text}'");
 
-                    results = RunSearch(text);
+                    results = RunSearch(text, retryBmp);
                 }
             }
 
@@ -137,7 +143,7 @@ List<UmaEvent> SearchEvents(string eventName)
         .ToList();
 }
 
-int RunSearch(string eventName)
+int RunSearch(string eventName, Bitmap? bmp = null)
 {
     Console.Out.WriteLine("Searching event name: " + eventName);
 
@@ -145,9 +151,11 @@ int RunSearch(string eventName)
     sw.Start();
 
     var events = SearchEvents(eventName);
-
-
+    
     var searchTime = sw.ElapsedMilliseconds;
+
+    if (events.Count == 1 && bmp != null)
+        SaveEventImage(eventName, bmp);
 
     // only take 5 events should there be more
     foreach (var umaEvent in events.Take(5))
@@ -175,24 +183,29 @@ static Bitmap CaptureScreenRegion(Rectangle rect)
     return bmp;
 }
 
-static string GetTextFromBitmap(Bitmap bmp)
+async static Task<string> GetTextFromBitmapAsync(Bitmap bmp)
 {
-
+    var service = new TesseractTextExtractor();
     var tessdataPath = Path.Combine(Directory.GetCurrentDirectory(), "tessdata");
 
-    var img = PixConverter.ToPix(bmp);
+    // var img = PixConverter.ToPix(bmp);
 
-    using var engine = new TesseractEngine(tessdataPath, "eng", EngineMode.Default);
+    // using var engine = new TesseractEngine(tessdataPath, "eng", EngineMode.Default);
 
-    engine.SetVariable("tessedit_char_whitelist", "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,!?'()#☆ ");
-    engine.SetVariable("debug_file", "NUL");
+    // engine.SetVariable("tessedit_char_whitelist", "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,!?'()#☆ ");
+    // engine.SetVariable("debug_file", "NUL");
 
-    engine.DefaultPageSegMode = PageSegMode.SingleLine;
+    // engine.DefaultPageSegMode = PageSegMode.SingleLine;
 
-    using var page = engine.Process(img);
+    // using var page = engine.Process(img);
 
-    var meanConfidence = page.GetMeanConfidence(); // 0.0 to 1.0
-    var text = page.GetText();
+    // var meanConfidence = page.GetMeanConfidence(); // 0.0 to 1.0
+    // var text = page.GetText();
+
+    var result = await service.ExtractTextAsync(bmp);
+
+    var text = result.Text;
+    var meanConfidence = result.Metadata?.MeanConfidence;
 
     var confidenceThreshold = 0.6;
 
@@ -264,4 +277,33 @@ static Bitmap ExtractWhiteText(Bitmap input, byte brightnessThreshold = 200)
     }
 
     return output;
+}
+
+
+static void SaveEventImage(string eventName, Bitmap bmp)
+{
+    var root = Path.Combine(AppContext.BaseDirectory, "captures");
+
+    // replace special chacaters
+    var eventNameSanitized = MyRegex().Replace(eventName, "");
+
+    Console.Out.WriteLine($"Saving Images to {root}");
+
+    Directory.CreateDirectory(root); // make sure folder exists
+
+    var filePath = Path.Combine(root, eventNameSanitized + ".png");
+
+    if (File.Exists(filePath))
+    {
+        // already saved for this event, skip
+        return;
+    }
+
+    bmp.Save(filePath, System.Drawing.Imaging.ImageFormat.Png);
+}
+
+partial class Program
+{
+    [GeneratedRegex(@"[^a-zA-Z0-9]")]
+    private static partial Regex MyRegex();
 }

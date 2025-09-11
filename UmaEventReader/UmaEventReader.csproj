@@ -39,4 +39,8 @@
       <PackageReference Include="Tesseract.Drawing" Version="5.2.0" />
     </ItemGroup>
 
+    <ItemGroup>
+      <ProjectReference Include="..\UmaEventReader.Services\UmaEventReader.Services.csproj" />
+    </ItemGroup>
+
 </Project>
